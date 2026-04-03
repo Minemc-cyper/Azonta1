@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="EduTest Pro — Nền tảng tạo và làm bài kiểm tra trắc nghiệm trực tuyến nhanh chóng, hỗ trợ chia sẻ đề qua mạng.">
+    <title>Edu Pro — Nền Tảng Thi Trắc Nghiệm</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.1/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Firebase SDK (Compat v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Confetti Canvas (z-index: 9999) -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Firebase Offline Warning Banner -->
+    <div id="firebase-banner" class="firebase-banner hidden">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Bạn đang ở chế độ <b>Offline</b> — Đề thi chỉ lưu trên máy này. <a href="#"
+                onclick="app.showFirebaseSetup(); return false;">Xem hướng dẫn cấu hình Firebase</a> để chia sẻ qua
+            mạng.</span>
+        <button onclick="document.getElementById('firebase-banner').classList.add('hidden')" aria-label="Đóng">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <div class="app-container">
+
+        <!-- ═══ HEADER ═══ -->
+        <header class="glass-panel">
+            <div class="logo" onclick="app.navigate('home-screen')" role="button" aria-label="Về trang chủ">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <h2>Edu <span class="badge">Pro</span></h2>
+            </div>
+            <nav class="header-nav" id="header-nav" aria-label="Điều hướng chính">
+                <!-- Injected by JS based on active section -->
+            </nav>
+        </header>
+
+        <!-- ═══ MAIN CONTENT ═══ -->
+        <main id="main-content">
+
+            <!-- ──────────────────────────────────
+                 1. HOME SCREEN
+            ────────────────────────────────── -->
+            <section id="home-screen" class="view-section active" aria-label="Trang chủ">
+                <div class="hero">
+                    <div class="hero-badge"><i class="fa-solid fa-bolt"></i> Made By BanhBoBanhBao</div>
+                    <h1>Sẵn sàng cho bài kiểm tra của bạn?</h1>
+                    <p>Nền tảng tạo và làm bài kiểm tra cực nhanh.</p>
+                </div>
+                <div class="role-selection">
+                    <div class="role-card" onclick="app.navigate('teacher-dashboard')" role="button"
+                        id="btn-role-teacher" tabindex="0">
+                        <div class="icon-wrap teacher-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
+                        <h3>Giáo viên</h3>
+                        <p>Tạo đề thi, tải file Word/ảnh, quản lý kết quả học sinh.</p>
+                        <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    </div>
+                    <div class="role-card" onclick="app.navigate('student-login')" role="button" id="btn-role-student"
+                        tabindex="0">
+                        <div class="icon-wrap student-icon"><i class="fa-solid fa-user-pen"></i></div>
+                        <h3>Học sinh</h3>
+                        <p>Nhập mã đề và bắt đầu làm bài kiểm tra ngay lập tức.</p>
+                        <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ──────────────────────────────────
+                 2. TEACHER DASHBOARD (CREATE TEST)
+            ────────────────────────────────── -->
+            <section id="teacher-dashboard" class="view-section" aria-label="Tạo đề thi">
+                <div class="dashboard-header">
+                    <div>
+                        <h2><i class="fa-solid fa-plus-circle"></i> Tạo Đề Thi Mới</h2>
+                        <p>Khởi tạo bài thi từ File Word, hình ảnh (OCR), hoặc dán văn bản trực tiếp.</p>
+                    </div>
+                    <button class="btn btn-outline" onclick="app.navigate('teacher-my-tests')" id="btn-goto-my-tests">
+                        <i class="fa-solid fa-folder-open"></i> Đề của tôi
+                    </button>
+                </div>
+
+                <div class="upload-area glass-panel">
+                    <div class="tab-controls" role="tablist">
+                        <button class="tab-btn active" onclick="app.switchTab('text-upload')" role="tab" id="tab-text">
+                            <i class="fa-solid fa-align-left"></i> Văn bản
+                        </button>
+                        <button class="tab-btn" onclick="app.switchTab('file-upload')" role="tab" id="tab-file">
+                            <i class="fa-regular fa-file-word"></i> File Word (.docx)
+                        </button>
+                        <button class="tab-btn" onclick="app.switchTab('image-upload')" role="tab" id="tab-image">
+                            <i class="fa-regular fa-image"></i> Hình ảnh (OCR)
+                        </button>
+                    </div>
+
+                    <!-- Text Paste -->
+                    <div id="text-upload" class="tab-panel active" role="tabpanel">
+                        <textarea id="raw-text-input" placeholder="Dán nội dung đề thi vào đây.
+
+Ví dụ định dạng:
+Câu 1: Thủ đô của Việt Nam là gì?
+A. Hà Nội
+B. Huế
+C. Đà Nẵng
+D. TP.HCM
+Đáp án: A
+
+Câu 2: ..."></textarea>
+                        <div class="action-bar">
+                            <button class="btn btn-primary" id="btn-parse-text"
+                                onclick="app.parseText(document.getElementById('raw-text-input').value)">
+                                Nhận diện câu hỏi <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Word Upload -->
+                    <div id="file-upload" class="tab-panel" role="tabpanel">
+                        <div class="file-drop-zone" id="word-drop-zone"
+                            onclick="document.getElementById('word-file-input').click()">
+                            <i class="fa-regular fa-file-word fa-3x"></i>
+                            <p>Kéo thả file Word (.docx) vào đây hoặc nhấn để chọn</p>
+                            <input type="file" id="word-file-input" accept=".docx" hidden
+                                onchange="app.handleWordFile(event)">
+                            <button class="btn btn-outline"
+                                onclick="event.stopPropagation(); document.getElementById('word-file-input').click()">
+                                <i class="fa-solid fa-upload"></i> Chọn file
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Image OCR -->
+                    <div id="image-upload" class="tab-panel" role="tabpanel">
+                        <div class="file-drop-zone" id="img-drop-zone"
+                            onclick="document.getElementById('img-file-input').click()">
+                            <i class="fa-regular fa-image fa-3x"></i>
+                            <p>Tải lên hình ảnh đề thi để nhận diện chữ (OCR)</p>
+                            <input type="file" id="img-file-input" accept="image/*" hidden
+                                onchange="app.handleImageFile(event)">
+                            <button class="btn btn-outline"
+                                onclick="event.stopPropagation(); document.getElementById('img-file-input').click()">
+                                <i class="fa-solid fa-upload"></i> Chọn ảnh
+                            </button>
+                        </div>
+                        <div id="ocr-loader" class="loader-wrap hidden">
+                            <div class="spinner"></div>
+                            <p class="loader-status">Đang quét ảnh... (Có thể mất 30–60 giây)</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ──────────────────────────────────
+                 3. TEACHER REVIEW & CONFIG
+            ────────────────────────────────── -->
+            <section id="teacher-review" class="view-section" aria-label="Xem lại và cấu hình đề">
+                <div class="dashboard-header">
+                    <div>
+                        <h2><i class="fa-solid fa-list-check"></i> Kiểm tra &amp; Cấu hình Đề</h2>
+                        <p>Xem lại câu hỏi, nhấp vào đáp án để chỉnh sửa, rồi lưu đề thi.</p>
+                    </div>
+                </div>
+
+                <div class="review-grid">
+                    <!-- Config Panel -->
+                    <div class="settings-panel glass-panel">
+                        <h3><i class="fa-solid fa-gear"></i> Cấu hình bài thi</h3>
+                        <div class="input-group">
+                            <label for="test-name">Tên bài thi:</label>
+                            <input type="text" id="test-name" placeholder="VD: Kiểm tra Toán 15 phút">
+                        </div>
+                        <div class="input-group">
+                            <label for="test-time">Thời gian (phút) — 0 = không giới hạn:</label>
+                            <input type="number" id="test-time" value="15" min="0">
+                        </div>
+                        <div class="toggle-group">
+                            <label class="switch" for="shuffle-questions">
+                                <input type="checkbox" id="shuffle-questions" checked>
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Xáo trộn thứ tự câu hỏi</span>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="switch" for="allow-view-answers">
+                                <input type="checkbox" id="allow-view-answers" checked>
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Cho phép HS xem lại đáp án sau khi nộp</span>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="switch" for="teacher-controlled-answers">
+                                <input type="checkbox" id="teacher-controlled-answers">
+                                <span class="slider round"></span>
+                            </label>
+                            <div>
+                                <span>Giáo viên kiểm soát thời điểm mở đáp án</span>
+                                <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px">Mở/đóng qua
+                                    màn hình Giám sát thời gian thực</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-success full-width" id="btn-save-test" onclick="app.saveTest()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Lưu &amp; Tạo mã đề thi
+                        </button>
+                    </div>
+
+                    <!-- Questions List -->
+                    <div class="questions-panel glass-panel">
+                        <div class="questions-panel-header">
+                            <h3><i class="fa-solid fa-list"></i> Câu hỏi nhận diện được (<span
+                                    id="parsed-count">0</span>)</h3>
+                            <button class="btn btn-ai" id="btn-ai-suggest" onclick="app.suggestAnswersWithGemini()"
+                                style="display:none">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> AI đề xuất đáp án
+                            </button>
+                        </div>
+                        <div id="ai-key-notice" class="ai-key-notice hidden">
+                            <i class="fa-solid fa-key"></i>
+                            Chưa có Groq API Key. <a href="https://console.groq.com/keys" target="_blank">Lấy miễn phí
+                                tại đây</a> rồi dán vào <code>GROQ_API_KEY</code> trong <b>app.js</b>.
+                        </div>
+                        <div id="parsed-questions-list" class="questions-list-admin">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ──────────────────────────────────
+                 4. TEACHER MY TESTS
+            ────────────────────────────────── -->
+            <section id="teacher-my-tests" class="view-section" aria-label="Đề thi của tôi">
+                <div class="dashboard-header">
+                    <div>
+                        <h2><i class="fa-solid fa-folder-open"></i> Đề Thi Của Tôi</h2>
+                        <p>Xem lại, theo dõi kết quả và xóa đề thi đã tạo trên thiết bị này.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="app.navigate('teacher-dashboard')" id="btn-create-new">
+                        <i class="fa-solid fa-plus"></i> Tạo đề mới
+                    </button>
+                </div>
+                <div id="my-tests-list" class="my-tests-grid">
+                    <!-- Injected by JS -->
+                </div>
+            </section>
+
+            <!-- ──────────────────────────────────
+                 5. TEACHER RESULTS DETAIL
+            ────────────────────────────────── -->
+            <section id="teacher-results-detail" class="view-section" aria-label="Chi tiết kết quả">
+                <div class="dashboard-header">
+                    <div>
+                        <h2><i class="fa-solid fa-chart-bar"></i> Kết quả: <span id="results-test-name">---</span></h2>
+                        <p id="results-test-meta"></p>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn btn-outline" id="btn-export-csv" onclick="app.exportCSV()">
+                            <i class="fa-solid fa-file-csv"></i> Xuất CSV
+                        </button>
+                        <button class="btn btn-outline" onclick="app.navigate('teacher-my-tests')"
+                            id="btn-back-to-my-tests">
+                            <i class="fa-solid fa-arrow-left"></i> Quay lại
+                        </button>
+                    </div>
+                </div>
+                <div class="glass-panel results-table-wrap">
+                    <table class="results-table" id="results-table" aria-label="Bảng kết quả học sinh">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Họ và tên</th>
+                                <th>Điểm</th>
+                                <th>Số câu đúng</th>
+                                <th>Thời gian nộp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-tbody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ──────────────────────────────────
+                 6. TEACHER MONITOR (LIVE)
+            ────────────────────────────────── -->
+            <section id="teacher-monitor" class="view-section" aria-label="Giám sát phòng thi">
+                <div class="dashboard-header">
+                    <div>
+                        <h2><i class="fa-solid fa-satellite-dish"></i> Giám sát: <span id="monitor-test-name">---</span>
+                        </h2>
+                        <p>Theo dõi học sinh theo thời gian thực. Mã đề: <strong id="monitor-code"
+                                style="color:var(--primary);letter-spacing:2px">---</strong></p>
+                    </div>
+                    <button class="btn btn-outline" onclick="app.navigate('teacher-my-tests')" id="btn-back-monitor">
+                        <i class="fa-solid fa-arrow-left"></i> Quay lại
+                    </button>
+                </div>
+
+                <!-- Controls -->
+                <div class="monitor-control-bar glass-panel">
+                    <div class="monitor-control-item">
+                        <label class="switch" for="toggle-answers-open">
+                            <input type="checkbox" id="toggle-answers-open"
+                                onchange="app.toggleAnswersOpen(this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                        <div>
+                            <div class="monitor-ctrl-label">🔓 Mở đáp án cho học sinh</div>
+                            <div class="monitor-ctrl-sub">Học sinh đã nộp bài có thể xem lại đáp án</div>
+                        </div>
+                    </div>
+                    <div class="monitor-control-separator"></div>
+                    <div class="monitor-control-item">
+                        <label class="switch" for="toggle-exam-lock">
+                            <input type="checkbox" id="toggle-exam-lock" onchange="app.toggleExamLock(this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                        <div>
+                            <div class="monitor-ctrl-label">🔒 Khóa phòng thi</div>
+                            <div class="monitor-ctrl-sub">Ngăn học sinh mới vào phòng</div>
+                        </div>
+                    </div>
+                    <div class="monitor-control-separator"></div>
+                    <button class="btn btn-outline" onclick="app.refreshMonitor()" id="btn-refresh-monitor">
+                        <i class="fa-solid fa-rotate"></i> Làm mới
+                    </button>
+                </div>
+
+                <!-- Stats Row -->
+                <div class="monitor-stats">
+                    <div class="monitor-stat-card">
+                        <i class="fa-solid fa-users" style="color:var(--primary)"></i>
+                        <span id="stat-joined">0</span>
+                        <small>Đã vào</small>
+                    </div>
+                    <div class="monitor-stat-card">
+                        <i class="fa-solid fa-pencil" style="color:var(--warning)"></i>
+                        <span id="stat-in-progress">0</span>
+                        <small>Đang làm</small>
+                    </div>
+                    <div class="monitor-stat-card">
+                        <i class="fa-solid fa-check-double" style="color:var(--success)"></i>
+                        <span id="stat-submitted">0</span>
+                        <small>Đã nộp</small>
+                    </div>
+                    <div class="monitor-stat-card">
+                        <i class="fa-solid fa-chart-line" style="color:#a855f7"></i>
+                        <span id="stat-avg-score">---</span>
+                        <small>Điểm TB</small>
+                    </div>
+                </div>
+
+                <!-- Student Cards -->
+                <div id="monitor-sessions-grid" class="monitor-sessions-grid">
+                    <!-- Injected by JS -->
+                </div>
+            </section>
+
+            <!-- ──────────────────────────────────
+                 7. STUDENT LOGIN
+            ────────────────────────────────── -->
+            <section id="student-login" class="view-section" aria-label="Vào phòng thi">
+                <div class="login-card glass-panel">
+                    <div class="login-icon"><i class="fa-solid fa-door-open"></i></div>
+                    <h2>Vào phòng thi</h2>
+                    <div class="input-group">
+                        <label for="student-name">Họ và tên của bạn:</label>
+                        <input type="text" id="student-name" placeholder="Nguyễn Văn A" autocomplete="name">
+                    </div>
+                    <div class="input-group">
+                        <label for="test-code">Mã bài kiểm tra (do giáo viên cung cấp):</label>
+                        <input type="text" id="test-code" placeholder="VD: ABC123"
+                            style="text-transform:uppercase; letter-spacing:4px; font-weight:800; font-size:1.15rem; text-align:center;"
+                            maxlength="8" autocomplete="off">
+                    </div>
+                    <button class="btn btn-primary full-width" id="btn-enter-exam" onclick="app.enterExamRoom()">
+                        <i class="fa-solid fa-play"></i> Bắt đầu làm bài
+                    </button>
+
+
+                </div>
+            </section>
+
+            <!-- ──────────────────────────────────
+                 7. STUDENT EXAM
+            ────────────────────────────────── -->
+            <section id="student-exam" class="view-section" aria-label="Làm bài thi">
+                <!-- Exam Header -->
+                <div class="exam-header glass-panel">
+                    <div class="exam-info">
+                        <h2 id="exam-title-display">Đang tải...</h2>
+                        <span id="exam-student-name">Thí sinh: ---</span>
+                    </div>
+                    <div class="exam-timer" id="exam-timer-wrap" aria-live="polite">
+                        <i class="fa-regular fa-clock"></i>
+                        <span id="timer-display">--:--</span>
+                    </div>
+                    <button class="btn btn-danger" id="btn-submit-exam" onclick="app.submitExam()">
+                        <i class="fa-solid fa-paper-plane"></i> Nộp bài
+                    </button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-wrap" aria-label="Tiến độ làm bài">
+                    <div class="progress-bar-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                        id="progress-bar-role">
+                        <div class="progress-bar-fill" id="exam-progress-bar" style="width:0%"></div>
+                    </div>
+                    <span id="progress-text">0 / 0 câu</span>
+                </div>
+
+                <!-- Exam Body -->
+                <div class="exam-body">
+                    <div class="exam-question-area glass-panel">
+                        <div id="live-question-list">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                    <div class="exam-navigator glass-panel">
+                        <h3><i class="fa-solid fa-map"></i> Điều hướng</h3>
+                        <div class="nav-grid" id="question-nav-grid">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ──────────────────────────────────
+                 8. RESULT SCREEN
+            ────────────────────────────────── -->
+            <section id="result-screen" class="view-section" aria-label="Kết quả bài thi">
+                <div class="result-card glass-panel">
+                    <div class="score-circle" id="score-circle" role="img" aria-label="Điểm số">
+                        <span id="result-score">10</span>
+                        <small>/ 10</small>
+                    </div>
+                    <h2 id="result-message">Xuất sắc!</h2>
+                    <div class="result-details">
+                        <div class="result-stat">
+                            <i class="fa-solid fa-check-circle" style="color:var(--success)"></i>
+                            <span>Số câu đúng: <strong id="result-correct-count">0/0</strong></span>
+                        </div>
+                        <div class="result-stat">
+                            <i class="fa-solid fa-user" style="color:var(--primary)"></i>
+                            <span>Thí sinh: <strong id="result-student-name">---</strong></span>
+                        </div>
+                    </div>
+                    <div id="answers-locked-notice" class="answers-locked-notice hidden">
+                        <i class="fa-solid fa-clock"></i>
+                        <span>Giáo viên chưa cho phép xem đáp án. Vui lòng chờ...</span>
+                    </div>
+                    <div class="result-actions">
+                        <button class="btn btn-outline" id="btn-view-answers" onclick="app.viewAnswers()">
+                            <i class="fa-solid fa-magnifying-glass"></i> Xem lại bài
+                        </button>
+                        <button class="btn btn-primary" onclick="app.navigate('home-screen')" id="btn-go-home">
+                            <i class="fa-solid fa-house"></i> Về trang chủ
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="app.js?v=8.2"></script>
+</body>
+
+</html>
