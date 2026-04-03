@@ -1,0 +1,13 @@
+ch A. B. C. D. xuống dòng riêng
+        text = text.replace(/([A-D])[\.)](?:\s|\u00A0|&nbsp;)*/gi, function (match, p1, offset, fullString) {
+            const prevChar = fullString[offset - 1];
+            if (!prevChar || /[\s>;​\u00A0\t\n\r]/.test(prevChar)) {
+                return '\n' + p1.toUpperCase() + '. ';
+            }
+            return match;
+        });
+
+        // Chuẩn hóa dòng đáp án
+        text = text.replace(/(\s|^)(Đáp án|Kết quả|Đ\.án)[:\s]*([A-D])/gi, '\nĐáp án: $3');
+
+  

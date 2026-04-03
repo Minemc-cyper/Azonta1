@@ -308,13 +308,9 @@ const app = {
 
         text = text.replace(/&nbsp;/gi, ' ');
 
-        // Tách A. B. C. D. xuống dòng riêng
-        text = text.replace(/([A-D])[\.)](?:\s|\u00A0|&nbsp;)*/gi, function (match, p1, offset, fullString) {
-            const prevChar = fullString[offset - 1];
-            if (!prevChar || /[\s>;​\u00A0\t\n\r]/.test(prevChar)) {
-                return '\n' + p1.toUpperCase() + '. ';
-            }
-            return match;
+        // Tách A. B. C. D. xuống dòng riêng (kể cả khi nhiều đáp án nằm cùng 1 dòng)
+        text = text.replace(/([ \t\n\r>.]|^)([A-D])[.)]/gm, function(match, before, p1) {
+            return (before || '') + '\n' + p1.toUpperCase() + '. ';
         });
 
         // Chuẩn hóa dòng đáp án
